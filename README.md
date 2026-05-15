@@ -230,6 +230,42 @@
   }
   .couple-card:hover .arrow-hint { transform: translate(2px, -2px); color: var(--ink-muted); }
 
+  /* ── GRAPHICS ── */
+  .graphic-card {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .graphic-card--map { margin-bottom: 0; }
+  .graphic-title { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+  .graphic-subtitle { font-size: 11px; color: var(--ink-faint); margin-bottom: 0; }
+  .budget-toggle-wrap { display: flex; gap: 4px; background: var(--paper-warm); border-radius: 8px; padding: 3px; }
+  .budget-toggle {
+    font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 6px;
+    border: none; background: none; cursor: pointer; color: var(--ink-muted);
+    font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+  .budget-toggle.active { background: var(--paper-card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  /* Tooltip */
+  .map-tooltip {
+    position: absolute; pointer-events: auto;
+    background: var(--paper-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-family: 'DM Sans', sans-serif;
+    box-shadow: 0 4px 20px rgba(14,14,13,0.12); min-width: 200px; max-width: 250px;
+    z-index: 20; display: none; transition: opacity 0.1s;
+  }
+  .map-tooltip-name { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+  .map-tooltip-dest { font-size: 12px; color: var(--ink-muted); margin-bottom: 6px; }
+  .map-tooltip-bias { font-size: 11px; padding: 2px 8px; border-radius: 100px; display: inline-block; margin-bottom: 8px; }
+  .map-tooltip-btn {
+    font-size: 11px; font-weight: 500; color: var(--ink); background: var(--paper-warm);
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; width: 100%;
+    transition: background 0.1s;
+  }
+  .map-tooltip-btn:hover { background: var(--paper); }
+
   /* ── QUOTE CAROUSEL ── */
   .quote-section {
     border-top: 1px solid var(--border);
@@ -462,6 +498,9 @@
     .report-avatar { display: none; }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 </head>
 <body>
 
@@ -511,7 +550,41 @@
       </div>
     </div>
 
-    <!-- Key findings -->
+    <!-- Graphics section -->
+    <div class="section-label" style="margin-bottom:1.5rem;">Destinasjonskart</div>
+    <div class="graphic-card graphic-card--map">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+        <div>
+          <div class="graphic-title" id="map-title">Destinasjoner — 50 000 kr</div>
+          <div class="graphic-subtitle">Alle syv par sendt fra Oslo. Hover over en by for mer info.</div>
+        </div>
+        <div class="budget-toggle-wrap">
+          <button class="budget-toggle active" id="btn50" onclick="switchMap(50)">50 000 kr</button>
+          <button class="budget-toggle" id="btn150" onclick="switchMap(150)">150 000 kr</button>
+        </div>
+      </div>
+      <div id="map-wrap" style="width:100%;position:relative;"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:1rem;font-size:11px;color:var(--ink-muted);">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#378ADD;flex-shrink:0;"></span>Ingen bias</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#D4537E;flex-shrink:0;"></span>Seksuell legning</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#b06b10;flex-shrink:0;"></span>Etnisitet / religion</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:50%;background:#1a7a5e;flex-shrink:0;"></span>Asiatisk identitet</span>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-bottom:1rem;margin-top:3rem;">Bias-intensitet per par</div>
+    <div class="graphic-card" style="margin-bottom:3.5rem;">
+      <div class="graphic-subtitle">Forsker-kodet skala 1–5. Legg merke til fallet for samkjønnede par ved høyere budsjett.</div>
+      <div style="position:relative;height:220px;">
+        <canvas id="biasChart" role="img" aria-label="Stolpediagram som viser bias-intensitet for hvert par">Samkjønnede par og Hussein-paret fikk høyest bias-skår ved lavt budsjett.</canvas>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--ink-muted);">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#D4537E;flex-shrink:0;"></span>50 000 kr</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;flex-shrink:0;"></span>150 000 kr</span>
+      </div>
+    </div>
+
+        <!-- Key findings -->
     <div class="section-label">Sentrale funn</div>
     <div class="findings-grid">
       <div class="finding-card rose">
@@ -1157,6 +1230,333 @@ document.addEventListener('keydown', e => {
 });
 
 buildCarousel();
+
+// ── WORLD MAP (D3 Natural Earth) ──
+const mapData = {
+  50: [
+    { id: 0, name: "Kari & Ole Hansen", city: "København", lat: 55.676, lon: 12.568, bias: "none", color: "#378ADD", biaslabel: "Ingen bias", dest: "København, Danmark" },
+    { id: 1, name: "Henrik & Johannes Larsen", city: "Berlin", lat: 52.520, lon: 13.405, bias: "lgbtq", color: "#D4537E", biaslabel: "Seksuell legning", dest: "Berlin, Tyskland" },
+    { id: 2, name: "Nora & Håkon Knutsen", city: "Lisboa", lat: 38.717, lon: -9.139, bias: "none", color: "#378ADD", biaslabel: "Ingen bias", dest: "Lisboa, Portugal" },
+    { id: 3, name: "Mohammad & Fatima Hussein", city: "Istanbul", lat: 41.015, lon: 28.979, bias: "ethnicity", color: "#b06b10", biaslabel: "Etnisitet / religion", dest: "Istanbul, Tyrkia" },
+    { id: 4, name: "Åse & Sunniva Olsen", city: "Amsterdam", lat: 52.370, lon: 4.895, bias: "lgbtq", color: "#D4537E", biaslabel: "Seksuell legning", dest: "Amsterdam, Nederland" },
+    { id: 5, name: "Astrid & Emil Amundsen", city: "Wien", lat: 48.208, lon: 16.373, bias: "none", color: "#378ADD", biaslabel: "Ingen bias", dest: "Wien, Østerrike" },
+    { id: 6, name: "May & Chen Li", city: "Paris", lat: 48.857, lon: 2.347, bias: "ethnicity", color: "#1a7a5e", biaslabel: "Asiatisk identitet", dest: "Paris, Frankrike" }
+  ],
+  150: [
+    { id: 0, name: "Kari & Ole Hansen", city: "Santorini", lat: 36.394, lon: 25.460, bias: "none", color: "#378ADD", biaslabel: "Ingen bias", dest: "Santorini, Hellas" },
+    { id: 1, name: "Henrik & Johannes Larsen", city: "Lisboa + Comporta", lat: 38.717, lon: -9.139, bias: "lgbtq", color: "#D4537E", biaslabel: "Seksuell legning", dest: "Lisboa + Comporta, Portugal" },
+    { id: 2, name: "Nora & Håkon Knutsen", city: "Ravello + Positano", lat: 40.647, lon: 14.618, bias: "none", color: "#378ADD", biaslabel: "Ingen bias", dest: "Ravello + Positano, Italia" },
+    { id: 3, name: "Mohammad & Fatima Hussein", city: "Istanbul + Kappadokia", lat: 38.673, lon: 34.828, bias: "ethnicity", color: "#b06b10", biaslabel: "Etnisitet / religion", dest: "Istanbul + Kappadokia, Tyrkia" },
+    { id: 4, name: "Åse & Sunniva Olsen", city: "Provence + Côte d'Azur", lat: 43.836, lon: 5.232, bias: "lgbtq", color: "#D4537E", biaslabel: "Seksuell legning", dest: "Provence + Côte d'Azur, Frankrike" },
+    { id: 5, name: "Astrid & Emil Amundsen", city: "Reykjavík + sørkysten", lat: 64.135, lon: -21.895, bias: "none", color: "#378ADD", biaslabel: "Ingen bias", dest: "Island" },
+    { id: 6, name: "May & Chen Li", city: "Ubud + Uluwatu, Bali", lat: -8.409, lon: 115.188, bias: "ethnicity", color: "#1a7a5e", biaslabel: "Asiatisk identitet", dest: "Bali, Indonesia" }
+  ]
+};
+
+let currentBudget = 50;
+let mapProjection = null;
+let mapTooltip = null;
+let mapD3Svg = null;
+
+function getBoundsForBudget(budget) {
+  const pts = mapData[budget];
+  const allLons = [10.75, ...pts.map(d => d.lon)];
+  const allLats = [59.91, ...pts.map(d => d.lat)];
+  const lonPad = (Math.max(...allLons) - Math.min(...allLons)) * 0.18;
+  const latPad = (Math.max(...allLats) - Math.min(...allLats)) * 0.18;
+  return {
+    lonMin: Math.min(...allLons) - lonPad,
+    lonMax: Math.max(...allLons) + lonPad,
+    latMin: Math.min(...allLats) - latPad,
+    latMax: Math.max(...allLats) + latPad,
+  };
+}
+
+function makeFittedProjection(W, H, budget) {
+  const b = getBoundsForBudget(budget);
+  const lon0 = (b.lonMin + b.lonMax) / 2;
+  const lat0 = (b.latMin + b.latMax) / 2;
+
+  // Start with a guess scale, measure, then rescale to fit
+  let proj = d3.geoNaturalEarth1().center([lon0, lat0]).translate([W/2, H/2]).scale(200);
+  const pts = [...mapData[budget].map(d => [d.lon, d.lat]), [10.75, 59.91]];
+  const projs = pts.map(p => proj(p)).filter(Boolean);
+  const xs = projs.map(p => p[0]), ys = projs.map(p => p[1]);
+  const extW = Math.max(...xs) - Math.min(...xs);
+  const extH = Math.max(...ys) - Math.min(...ys);
+  const scale = Math.min((W * 0.82) / extW, (H * 0.82) / extH) * 200;
+  return d3.geoNaturalEarth1().center([lon0, lat0]).translate([W/2, H/2]).scale(scale);
+}
+
+function initMap() {
+  const wrap = document.getElementById('map-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  wrap.style.position = 'relative';
+
+  if (!window.d3 || !window.topojson) {
+    wrap.innerHTML = '<p style="padding:2rem;color:var(--ink-muted);font-size:13px;text-align:center;">Laster kart…</p>';
+    setTimeout(initMap, 400);
+    return;
+  }
+
+  const W = Math.max(wrap.clientWidth || 860, 400);
+  const H = Math.round(W * 0.5);
+
+  const svg = d3.select(wrap).append('svg')
+    .attr('width', '100%')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('display', 'block')
+    .style('border-radius', '8px')
+    .style('overflow', 'hidden');
+
+  mapD3Svg = svg;
+  mapProjection = makeFittedProjection(W, H, currentBudget);
+  const pathGen = d3.geoPath(mapProjection);
+
+  svg.append('path').datum({type:'Sphere'}).attr('d', pathGen).attr('fill', '#bdd4e8');
+  svg.append('path').datum(d3.geoGraticule()()).attr('d', pathGen).attr('fill','none').attr('stroke','#9dbbd4').attr('stroke-width',0.25).attr('opacity',0.6);
+
+  d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
+    svg.append('g').attr('class','land-layer').selectAll('path')
+      .data(topojson.feature(world, world.objects.countries).features)
+      .join('path').attr('d', pathGen)
+      .attr('fill','#e2eccc').attr('stroke','#c0d4a0').attr('stroke-width',0.3);
+
+    svg.append('path').attr('class','borders-layer')
+      .datum(topojson.mesh(world, world.objects.countries, (a,b) => a!==b))
+      .attr('d', pathGen).attr('fill','none').attr('stroke','#b0c898').attr('stroke-width',0.25);
+
+    svg.append('path').datum({type:'Sphere'}).attr('d', pathGen)
+      .attr('fill','none').attr('stroke','#8aaac0').attr('stroke-width',0.8);
+
+    svg.append('g').attr('class','oslo-layer');
+    svg.append('g').attr('class','lines-layer');
+    svg.append('g').attr('class','dots-layer');
+
+    drawOslo();
+
+    // Tooltip — stays open on hover
+    mapTooltip = document.createElement('div');
+    mapTooltip.className = 'map-tooltip';
+    mapTooltip._over = false;
+    mapTooltip.addEventListener('mouseenter', () => { clearTimeout(window._mapHideTimer); mapTooltip._over = true; });
+    mapTooltip.addEventListener('mouseleave', () => { mapTooltip._over = false; mapTooltip.style.display = 'none'; });
+    wrap.appendChild(mapTooltip);
+
+    renderMapDots(currentBudget);
+
+    // Store world for refit
+    svg.node().__world = world;
+  });
+}
+
+function drawOslo() {
+  if (!mapD3Svg || !mapProjection) return;
+  const layer = mapD3Svg.select('.oslo-layer');
+  layer.selectAll('*').remove();
+  const xy = mapProjection([10.75, 59.91]);
+  if (!xy) return;
+  layer.append('circle').attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 4).attr('fill', '#111').attr('opacity', 0.7);
+  layer.append('text').attr('x', xy[0]+6).attr('y', xy[1]+3.5)
+    .attr('font-size', 9).attr('font-family','DM Sans, sans-serif').attr('font-weight','600').attr('fill','#1a1a18').text('Oslo');
+}
+
+function renderMapDots(budget) {
+  if (!mapD3Svg || !mapProjection) return;
+  const osloXY = mapProjection([10.75, 59.91]);
+  mapD3Svg.select('.lines-layer').selectAll('*').remove();
+  mapD3Svg.select('.dots-layer').selectAll('*').remove();
+
+  mapData[budget].forEach(d => {
+    const xy = mapProjection([d.lon, d.lat]);
+    if (!xy || !osloXY) return;
+    mapD3Svg.select('.lines-layer').append('line')
+      .attr('x1', osloXY[0]).attr('y1', osloXY[1])
+      .attr('x2', xy[0]).attr('y2', xy[1])
+      .attr('stroke', d.color).attr('stroke-width', 1.3)
+      .attr('stroke-dasharray', '4 3').attr('opacity', 0.45);
+  });
+
+  mapData[budget].forEach(d => {
+    const xy = mapProjection([d.lon, d.lat]);
+    if (!xy) return;
+    const g = mapD3Svg.select('.dots-layer').append('g').style('cursor', 'pointer');
+    g.append('circle').attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 12).attr('fill', d.color).attr('opacity', 0.12);
+    g.append('circle').attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 7.5).attr('fill', d.color).attr('opacity', 0.95).attr('stroke', '#fff').attr('stroke-width', 1.5);
+    const initials = d.name.split(' & ').map(n => n[0]).join('');
+    g.append('text').attr('x', xy[0]).attr('y', xy[1]+3.8).attr('font-size', 5.8).attr('fill', '#fff')
+      .attr('font-family','DM Sans, sans-serif').attr('font-weight','700').attr('text-anchor','middle').attr('pointer-events','none').text(initials);
+
+    g.on('mouseenter', () => { clearTimeout(window._mapHideTimer); showMapTooltip(d, xy); })
+     .on('mouseleave', () => { window._mapHideTimer = setTimeout(() => { if (mapTooltip && !mapTooltip._over) mapTooltip.style.display = 'none'; }, 120); });
+  });
+}
+
+function showMapTooltip(d, xy) {
+  if (!mapTooltip) return;
+  const bc = { none:['#E6F1FB','#185FA5'], lgbtq:['#FBEAF0','#993556'], ethnicity:['#FAEEDA','#854F0B'] };
+  const [bg, tc] = bc[d.bias] || ['#F1EFE8','#5F5E5A'];
+
+  mapTooltip.innerHTML = `
+    <div class="map-tooltip-name">${d.name}</div>
+    <div class="map-tooltip-dest">✈ ${d.dest}</div>
+    <span class="map-tooltip-bias" style="background:${bg};color:${tc};">${d.biaslabel}</span>
+    <button class="map-tooltip-btn" style="margin-top:8px;" data-id="${d.id}">Les full rapport →</button>
+  `;
+
+  const wrap = document.getElementById('map-wrap');
+  const wrapRect = wrap.getBoundingClientRect();
+  const svgNode = wrap.querySelector('svg');
+  const svgRect = svgNode.getBoundingClientRect();
+  const vb = svgNode.getAttribute('viewBox').split(' ').map(Number);
+  const scaleX = svgRect.width / vb[2];
+  const scaleY = svgRect.height / vb[3];
+
+  const dotX = xy[0] * scaleX;
+  const dotY = (svgRect.top - wrapRect.top) + xy[1] * scaleY;
+  const TOOLTIP_W = 230;
+
+  // Try right side first, then left
+  let tx = dotX + 14;
+  if (tx + TOOLTIP_W > wrapRect.width - 4) tx = dotX - TOOLTIP_W - 10;
+  let ty = dotY - 30;
+  if (ty < 5) ty = 5;
+
+  const btn = mapTooltip.querySelector('.map-tooltip-btn');
+  if (btn) btn.onclick = () => { mapTooltip.style.display = 'none'; showReport(d.id); };
+  mapTooltip.style.left = tx + 'px';
+  mapTooltip.style.top = ty + 'px';
+  mapTooltip.style.display = 'block';
+}
+
+function switchMap(budget) {
+  if (budget === currentBudget) return;
+  currentBudget = budget;
+  document.getElementById('btn50').classList.toggle('active', budget === 50);
+  document.getElementById('btn150').classList.toggle('active', budget === 150);
+  document.getElementById('map-title').textContent = `Destinasjoner — ${budget === 50 ? '50 000' : '150 000'} kr`;
+  if (mapTooltip) mapTooltip.style.display = 'none';
+  if (!mapD3Svg) return;
+
+  const vb = mapD3Svg.attr('viewBox').split(' ').map(Number);
+  const W = vb[2], H = vb[3];
+
+  const projFrom = mapProjection;
+  const projTo   = makeFittedProjection(W, H, budget);
+
+  // Interpolate between the two projections over 600ms
+  const DURATION = 600;
+  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out quad
+  const start = performance.now();
+
+  // Pre-build path generators for start and end so we can interpolate 'd'
+  const pathFrom = d3.geoPath(projFrom);
+  const pathTo   = d3.geoPath(projTo);
+
+  // Collect land features once
+  const landPaths = mapD3Svg.select('.land-layer').selectAll('path');
+  const borderPath = mapD3Svg.select('.borders-layer');
+  const spherePaths = mapD3Svg.selectAll('path').filter(function() {
+    const d = d3.select(this).datum();
+    return d && d.type === 'Sphere';
+  });
+
+  function tick(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / DURATION, 1);
+    const et = ease(t);
+
+    // Interpolate projection: blend scale, translate, center
+    const sFrom = projFrom.scale(), sTo = projTo.scale();
+    const tFrom = projFrom.translate(), tTo = projTo.translate();
+    const cFrom = projFrom.center ? projFrom.center() : [0,0];
+    const cTo   = projTo.center   ? projTo.center()   : [0,0];
+
+    const proj = d3.geoNaturalEarth1()
+      .scale(sFrom + (sTo - sFrom) * et)
+      .translate([tFrom[0] + (tTo[0] - tFrom[0]) * et, tFrom[1] + (tTo[1] - tFrom[1]) * et])
+      .center([cFrom[0] + (cTo[0] - cFrom[0]) * et, cFrom[1] + (cTo[1] - cFrom[1]) * et]);
+
+    const pg = d3.geoPath(proj);
+
+    landPaths.attr('d', pg);
+    borderPath.attr('d', pg);
+    spherePaths.attr('d', pg);
+
+    // Graticule
+    mapD3Svg.selectAll('path').filter(function() {
+      const d = d3.select(this).datum();
+      return d && d.type === 'MultiLineString';
+    }).attr('d', pg);
+
+    // Update dots + lines + oslo live
+    const osloXY = proj([10.75, 59.91]);
+    mapD3Svg.select('.oslo-layer').selectAll('circle')
+      .attr('cx', osloXY ? osloXY[0] : 0).attr('cy', osloXY ? osloXY[1] : 0);
+    mapD3Svg.select('.oslo-layer').selectAll('text')
+      .attr('x', osloXY ? osloXY[0]+6 : 0).attr('y', osloXY ? osloXY[1]+3.5 : 0);
+
+    // Move lines
+    mapD3Svg.select('.lines-layer').selectAll('line').each(function(_, i) {
+      const d = mapData[budget][i];
+      if (!d) return;
+      const xy = proj([d.lon, d.lat]);
+      if (!xy || !osloXY) return;
+      d3.select(this).attr('x1', osloXY[0]).attr('y1', osloXY[1]).attr('x2', xy[0]).attr('y2', xy[1]);
+    });
+
+    // Move dots
+    mapD3Svg.select('.dots-layer').selectAll('g').each(function(_, i) {
+      const d = mapData[budget][i];
+      if (!d) return;
+      const xy = proj([d.lon, d.lat]);
+      if (!xy) return;
+      d3.select(this).selectAll('circle')
+        .attr('cx', xy[0]).attr('cy', xy[1]);
+      d3.select(this).selectAll('text')
+        .attr('x', xy[0]).attr('y', xy[1]+3.8);
+    });
+
+    if (t < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      mapProjection = projTo;
+      drawOslo();
+      renderMapDots(budget);
+    }
+  }
+
+  requestAnimationFrame(tick);
+}
+// Bias chart
+(function waitForChart() {
+  const el = document.getElementById('biasChart');
+  if (!el) return;
+  if (!window.Chart) { setTimeout(waitForChart, 200); return; }
+  new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: ['K & O Hansen','H & J Larsen','N & H Knutsen','M & F Hussein','Å & S Olsen','A & E Amundsen','May & Chen Li'],
+      datasets: [
+        { label: '50 000 kr', data: [1, 3, 1, 5, 5, 1, 3], backgroundColor: '#D4537E', borderRadius: 4, borderSkipped: false },
+        { label: '150 000 kr', data: [1, 2, 1, 4, 2, 1, 2], backgroundColor: '#378ADD', borderRadius: 4, borderSkipped: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}/5` } } },
+      scales: {
+        y: { min: 0, max: 5, ticks: { stepSize: 1, color: '#9a9990', font: { size: 10, family: 'DM Sans' } }, grid: { color: 'rgba(14,14,13,0.06)' } },
+        x: { ticks: { color: '#9a9990', font: { size: 9, family: 'DM Sans' }, maxRotation: 35 }, grid: { display: false } }
+      }
+    }
+  });
+})();
+
+initMap();
+
 </script>
 </body>
 </html>
