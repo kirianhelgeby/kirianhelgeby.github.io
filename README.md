@@ -1113,12 +1113,12 @@ function updateCarousel() {
   document.querySelectorAll('.cdot').forEach((d, i) => d.classList.toggle('active', i === currentSlide));
   const prev = document.getElementById('prevBtn');
   const next = document.getElementById('nextBtn');
-  if (prev) prev.disabled = currentSlide === 0;
-  if (next) next.disabled = currentSlide === quotes.length - 1;
+  if (prev) prev.disabled = false;
+  if (next) next.disabled = false;
 }
 
 function moveCarousel(dir) {
-  currentSlide = Math.max(0, Math.min(quotes.length - 1, currentSlide + dir));
+  currentSlide = (currentSlide + dir + quotes.length) % quotes.length;
   updateCarousel();
 }
 
