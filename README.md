@@ -513,7 +513,7 @@
     </svg>
     All couples
   </button>
-  <div class="nav-right">Prosjektoppgave 4 · 2025</div>
+  <div class="nav-right">Prosjektoppgave 4 · 2026</div>
 </nav>
 
 <!-- ════════════════════════════════════════
@@ -649,7 +649,7 @@
 
   <footer>
     <div>Ameli · Erik · Kirian · Mia &nbsp;·&nbsp; Prosjektoppgave 4: KI-agenter</div>
-    <div>Oslo, 2025</div>
+    <div>Oslo, 2026</div>
   </footer>
 
 </div><!-- /home-page -->
@@ -1008,7 +1008,7 @@ function renderReport(id) {
   const reportHtml = `
     <div class="report-header">
       <div>
-        <div class="report-eyebrow">Parrapport · AI Bias Study 2025</div>
+        <div class="report-eyebrow">Parrapport · AI Bias Study 2026</div>
         <div class="report-name">${c.name}</div>
         <div class="report-subtitle">${c.type}</div>
       </div>
